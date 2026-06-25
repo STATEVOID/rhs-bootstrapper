@@ -42,8 +42,11 @@ jobs:
             --rootfs xfs \
             localhost/rhs-bootstrapper:latest
             
+      - name: Compress output file
+        run: sudo gzip output/image/disk.raw
+
       - name: Rename output file
-        run: sudo mv output/image/disk.raw output/image/rhs-bootstrapper.raw
+        run: sudo mv output/image/disk.raw.gz output/image/rhs-bootstrapper.raw.gz
 
       - name: Determine Release Tag
         id: release_tag
@@ -62,6 +65,6 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
-          files: output/image/rhs-bootstrapper.raw
+          files: output/image/rhs-bootstrapper.raw.gz
           prerelease: ${{ env.TAG_NAME == 'latest' }}
           make_latest: ${{ env.TAG_NAME != 'latest' }}
