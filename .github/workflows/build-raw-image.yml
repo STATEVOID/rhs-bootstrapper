@@ -63,7 +63,6 @@ jobs:
           echo -e '[[customizations.filesystem]]\nmountpoint = "/"\nminsize = "3 GiB"' > ./config.toml
           sudo podman run \
             --rm \
-            --platform linux/arm64 \
             --privileged \
             --pull=newer \
             --security-opt label=type:unconfined_t \
