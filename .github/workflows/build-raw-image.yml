@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -17,8 +19,6 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Bootc image generation can take a lot of disk space.
-      # This step frees up space on the GitHub hosted runner.
       - name: Delete unnecessary tools to free up disk space
         run: sudo rm -rf /opt/hostedtoolcache
 
@@ -41,9 +41,27 @@ jobs:
             --type raw \
             --rootfs xfs \
             localhost/rhs-bootstrapper:latest
+            
+      - name: Rename output file
+        run: sudo mv output/image/disk.raw output/image/rhs-bootstrapper.raw
 
-      - name: Upload Raw Image Artifact
-        uses: actions/upload-artifact@v4
+      - name: Determine Release Tag
+        id: release_tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Release ${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=latest" >> $GITHUB_ENV
+            echo "RELEASE_NAME=Latest Nightly Build" >> $GITHUB_ENV
+          fi
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         with:
-          name: rhs-bootstrapper-raw-image
-          path: output/image/disk.raw
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_NAME }}
+          files: output/image/rhs-bootstrapper.raw
+          prerelease: ${{ env.TAG_NAME == 'latest' }}
+          make_latest: ${{ env.TAG_NAME != 'latest' }}
