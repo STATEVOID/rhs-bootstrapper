@@ -4,8 +4,23 @@
 
 FROM quay.io/fedora/fedora-bootc:40
 
-# Install jq for parsing the JSON config file and clean dnf cache
-RUN dnf install -y jq && dnf clean all && rm -rf /var/cache/dnf/*
+# Install the runtime packages used during first boot and the Fedora-provided
+# Raspberry Pi boot assets copied into the generated SD-card image by CI.
+RUN dnf install -y \
+      bcm283x-firmware \
+      grub2-efi-aa64 \
+      iputils \
+      jq \
+      linux-firmware \
+      NetworkManager \
+      NetworkManager-wifi \
+      openssh-server \
+      shim-aa64 \
+      uboot-images-armv8 \
+      wpa_supplicant \
+      wireless-regdb \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf/*
 
 # Copy the bootstrap script and service
 COPY rhs-bootstrap.sh /usr/local/bin/rhs-bootstrap.sh

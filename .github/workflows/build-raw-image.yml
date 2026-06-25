@@ -13,17 +13,49 @@ on:
 
 jobs:
   build:
-    name: Build Raw Disk Image
+    name: Build Raspberry Pi ARM64 Raw Disk Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Enable ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Delete unnecessary tools to free up disk space
         run: sudo rm -rf /opt/hostedtoolcache
 
+      - name: Install image tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dosfstools gdisk util-linux xfsprogs zstd
+
       - name: Build Bootc Container Image locally
-        run: sudo podman build -t localhost/rhs-bootstrapper:latest -f Containerfile .
+        run: |
+          sudo podman build \
+            --platform linux/arm64 \
+            -t localhost/rhs-bootstrapper:raspberrypi-arm64 \
+            -f Containerfile .
+
+      - name: Validate Bootc runtime packages
+        run: |
+          sudo podman run --rm --platform linux/arm64 localhost/rhs-bootstrapper:raspberrypi-arm64 uname -m | grep -Eq '^(aarch64|arm64)$'
+          sudo podman run --rm --platform linux/arm64 localhost/rhs-bootstrapper:raspberrypi-arm64 \
+            rpm -q \
+              bcm283x-firmware \
+              grub2-efi-aa64 \
+              iputils \
+              jq \
+              linux-firmware \
+              NetworkManager \
+              NetworkManager-wifi \
+              openssh-server \
+              shim-aa64 \
+              uboot-images-armv8 \
+              wpa_supplicant \
+              wireless-regdb
 
       - name: Build Raw Disk Image using bootc-image-builder
         run: |
@@ -31,7 +63,7 @@ jobs:
           echo -e '[[customizations.filesystem]]\nmountpoint = "/"\nminsize = "3 GiB"' > ./config.toml
           sudo podman run \
             --rm \
-            -it \
+            --platform linux/arm64 \
             --privileged \
             --pull=newer \
             --security-opt label=type:unconfined_t \
@@ -41,15 +73,19 @@ jobs:
             quay.io/centos-bootc/bootc-image-builder:latest \
             --config /config.toml \
             build \
+            --target-arch arm64 \
             --type raw \
             --rootfs xfs \
-            localhost/rhs-bootstrapper:latest
-            
-      - name: Compress output file
-        run: sudo gzip output/image/disk.raw
+            localhost/rhs-bootstrapper:raspberrypi-arm64
 
-      - name: Rename output file
-        run: sudo mv output/image/disk.raw.gz output/image/rhs-bootstrapper.raw.gz
+      - name: Inject and validate Raspberry Pi boot assets
+        run: bash scripts/postprocess-raspberrypi-arm64.sh output/image/disk.raw
+
+      - name: Compress and checksum output file
+        run: |
+          sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
+          cd output/image
+          sudo sha256sum rhs-bootstrapper-raspberrypi-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256 >/dev/null
 
       - name: Determine Release Tag
         id: release_tag
@@ -68,6 +104,8 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
-          files: output/image/rhs-bootstrapper.raw.gz
+          files: |
+            output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
+            output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
           prerelease: ${{ env.TAG_NAME == 'latest' }}
           make_latest: ${{ env.TAG_NAME != 'latest' }}
