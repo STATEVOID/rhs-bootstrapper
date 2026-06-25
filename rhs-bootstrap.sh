@@ -117,6 +117,53 @@ EOF
     chmod 600 /etc/ostree/auth.json
 fi
 
+# 5a. Setup Admin User & SSH Keys (if provided)
+ADMIN_USERNAME=$(jq -r '.admin_username // empty' "$CONFIG_FILE")
+ADMIN_PASSWORD=$(jq -r '.admin_password // empty' "$CONFIG_FILE")
+SSH_AUTHORIZED_KEY=$(jq -r '.ssh_authorized_key // empty' "$CONFIG_FILE")
+
+if [ -n "$ADMIN_USERNAME" ] || [ -n "$SSH_AUTHORIZED_KEY" ]; then
+    # Default to "admin" if no username specified but SSH key/password is provided
+    if [ -z "$ADMIN_USERNAME" ]; then
+        ADMIN_USERNAME="admin"
+    fi
+    
+    echo "Configuring admin user: $ADMIN_USERNAME"
+    
+    # Create user if not exists
+    if ! id "$ADMIN_USERNAME" &>/dev/null; then
+        # Check if wheel or sudo group exists
+        GROUPS_ARG=""
+        if getent group wheel &>/dev/null; then
+            GROUPS_ARG="-G wheel"
+        elif getent group sudo &>/dev/null; then
+            GROUPS_ARG="-G sudo"
+        fi
+        useradd -m $GROUPS_ARG -s /bin/bash "$ADMIN_USERNAME" || echo "Warning: Failed to create user $ADMIN_USERNAME"
+    fi
+    
+    # Set password if provided
+    if [ -n "$ADMIN_PASSWORD" ] && id "$ADMIN_USERNAME" &>/dev/null; then
+        echo "Setting password for $ADMIN_USERNAME..."
+        echo "$ADMIN_USERNAME:$ADMIN_PASSWORD" | chpasswd || echo "Warning: Failed to set password for $ADMIN_USERNAME"
+    fi
+    
+    # Set up SSH authorized keys if provided
+    if [ -n "$SSH_AUTHORIZED_KEY" ] && id "$ADMIN_USERNAME" &>/dev/null; then
+        echo "Injecting SSH authorized key for $ADMIN_USERNAME..."
+        USER_HOME=$(eval echo "~$ADMIN_USERNAME")
+        mkdir -p "$USER_HOME/.ssh"
+        echo "$SSH_AUTHORIZED_KEY" >> "$USER_HOME/.ssh/authorized_keys"
+        chmod 700 "$USER_HOME/.ssh"
+        chmod 600 "$USER_HOME/.ssh/authorized_keys"
+        chown -R "$ADMIN_USERNAME:$ADMIN_USERNAME" "$USER_HOME/.ssh"
+    fi
+    
+    # Enable and start SSH daemon
+    echo "Enabling sshd..."
+    systemctl enable --now sshd || echo "Warning: Failed to enable sshd"
+fi
+
 # 6. Perform the Bootc Switch
 echo "Switching bootc to target image: $TARGET_IMAGE"
 bootc switch "$TARGET_IMAGE"
