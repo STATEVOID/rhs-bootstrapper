@@ -4,11 +4,8 @@
 
 FROM quay.io/fedora/fedora-bootc:40
 
-# Install jq for config parsing, remove heavy unused container runtimes/tools, and clean caches
-RUN dnf install -y jq && \
-    dnf remove -y podman crun flatpak toolbox cockpit && \
-    dnf clean all && \
-    rm -rf /var/cache/dnf/* /var/log/dnf* /var/cache/yum/*
+# Install jq for parsing the JSON config file and clean dnf cache
+RUN dnf install -y jq && dnf clean all && rm -rf /var/cache/dnf/*
 
 # Copy the bootstrap script and service
 COPY rhs-bootstrap.sh /usr/local/bin/rhs-bootstrap.sh
