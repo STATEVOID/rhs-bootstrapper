@@ -14,15 +14,10 @@ on:
 jobs:
   build:
     name: Build Raspberry Pi ARM64 Raw Disk Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Enable ARM64 emulation
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Delete unnecessary tools to free up disk space
         run: sudo rm -rf /opt/hostedtoolcache
