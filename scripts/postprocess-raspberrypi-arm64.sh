@@ -41,13 +41,48 @@ sudo partprobe "$loop_dev" || true
 echo "Partition table for $image_path:"
 sudo sfdisk --dump "$loop_dev"
 
-find_partition_by_fstype() {
-  local pattern="$1"
-  lsblk -nrpo PATH,FSTYPE "$loop_dev" | awk -v pattern="$pattern" '$2 ~ pattern { print $1; exit }'
+find_esp_partition() {
+  local part
+  part="$(lsblk -bnrpo PATH,PARTTYPE,FSTYPE "$loop_dev" | awk '
+    tolower($2) == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" { print $1; exit }
+    $3 ~ /^(vfat|fat16|fat32)$/ { print $1; exit }
+  ')"
+
+  if [ -z "$part" ]; then
+    for candidate in "${loop_dev}"p*; do
+      [ -b "$candidate" ] || continue
+      fs_type="$(sudo blkid -o value -s TYPE "$candidate" 2>/dev/null || true)"
+      case "$fs_type" in
+        vfat|fat|fat16|fat32|msdos)
+          part="$candidate"
+          break
+          ;;
+      esac
+    done
+  fi
+
+  printf '%s\n' "$part"
 }
 
-boot_part="$(find_partition_by_fstype '^(vfat|fat16|fat32)$')"
-root_part="$(find_partition_by_fstype '^(xfs|ext4|btrfs)$')"
+find_root_partition() {
+  local part
+  part="$(lsblk -bnrpo PATH,PARTTYPE,FSTYPE,SIZE "$loop_dev" | awk '
+    $3 ~ /^(xfs|ext4|btrfs)$/ && $4 > largest { largest = $4; path = $1 }
+    END { if (path != "") print path }
+  ')"
+
+  if [ -z "$part" ]; then
+    part="$(lsblk -bnrpo PATH,PARTTYPE,SIZE "$loop_dev" | awk '
+      tolower($2) == "0fc63daf-8483-4772-8e79-3d69d8477de4" && $3 > largest { largest = $3; path = $1 }
+      END { if (path != "") print path }
+    ')"
+  fi
+
+  printf '%s\n' "$part"
+}
+
+boot_part="$(find_esp_partition)"
+root_part="$(find_root_partition)"
 
 if [ -z "$boot_part" ]; then
   echo "could not find a FAT boot/ESP partition in $image_path" >&2
