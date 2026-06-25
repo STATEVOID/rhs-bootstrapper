@@ -26,14 +26,24 @@ jobs:
         run: sudo podman build -t localhost/rhs-bootstrapper:latest -f Containerfile .
 
       - name: Build Raw Disk Image using bootc-image-builder
-        id: build-raw
-        uses: osbuild/bootc-image-builder-action@main
-        with:
-          image: localhost/rhs-bootstrapper:latest
-          types: raw
+        run: |
+          sudo mkdir -p ./output
+          sudo podman run \
+            --rm \
+            -it \
+            --privileged \
+            --pull=newer \
+            --security-opt label=type:unconfined_t \
+            -v ./output:/output \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            quay.io/centos-bootc/bootc-image-builder:latest \
+            build \
+            --type raw \
+            --local \
+            localhost/rhs-bootstrapper:latest
 
       - name: Upload Raw Image Artifact
         uses: actions/upload-artifact@v4
         with:
           name: rhs-bootstrapper-raw-image
-          path: ${{ steps.build-raw.outputs.output-directory }}/image/disk.raw
+          path: output/image/disk.raw
