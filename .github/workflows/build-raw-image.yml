@@ -1,0 +1,39 @@
+name: Build Raw Image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Raw Disk Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Bootc image generation can take a lot of disk space.
+      # This step frees up space on the GitHub hosted runner.
+      - name: Delete unnecessary tools to free up disk space
+        run: sudo rm -rf /opt/hostedtoolcache
+
+      - name: Build Bootc Container Image locally
+        run: sudo podman build -t localhost/rhs-bootstrapper:latest -f Containerfile .
+
+      - name: Build Raw Disk Image using bootc-image-builder
+        id: build-raw
+        uses: osbuild/bootc-image-builder-action@main
+        with:
+          image: localhost/rhs-bootstrapper:latest
+          types: raw
+
+      - name: Upload Raw Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhs-bootstrapper-raw-image
+          path: ${{ steps.build-raw.outputs.output-directory }}/image/disk.raw
