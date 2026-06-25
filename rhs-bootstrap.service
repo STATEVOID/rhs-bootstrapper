@@ -1,0 +1,16 @@
+[Unit]
+Description=RHS Public OS Bootstrapper
+# Ensure this runs as early as possible but after filesystems are mounted
+After=local-fs.target
+# Only run this once. The script shreds the config file, so it won't run fully again,
+# but we use a marker file to prevent it from even trying.
+ConditionPathExists=!/etc/rhs-bootstrap-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rhs-bootstrap.sh
+ExecStartPost=/usr/bin/touch /etc/rhs-bootstrap-done
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
