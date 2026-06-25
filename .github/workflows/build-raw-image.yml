@@ -39,7 +39,7 @@ jobs:
             quay.io/centos-bootc/bootc-image-builder:latest \
             build \
             --type raw \
-            --local \
+            --rootfs xfs \
             localhost/rhs-bootstrapper:latest
 
       - name: Upload Raw Image Artifact
