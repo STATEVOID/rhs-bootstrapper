@@ -31,8 +31,26 @@ WIFI_PSK=$(jq -r '.wifi_psk // empty' "$CONFIG_FILE")
 REGISTRY_AUTH=$(jq -r '.registry_auth // empty' "$CONFIG_FILE")
 TARGET_IMAGE=$(jq -r '.target_image // empty' "$CONFIG_FILE")
 
+# Execute custom bootstrap hooks (if any exist on the boot partition)
+HOOKS_DIR="/boot/efi/bootstrap.d"
+if [ -d "$HOOKS_DIR" ]; then
+    echo "Found custom bootstrap hooks at $HOOKS_DIR. Executing..."
+    for hook in $(find "$HOOKS_DIR" -maxdepth 1 -type f | sort); do
+        echo "Running hook: $hook"
+        export WIFI_SSID WIFI_PSK REGISTRY_AUTH TARGET_IMAGE CONFIG_FILE
+        # Sourcing ensures hooks can modify variables in this environment.
+        # We redirect stdin/stdout to the active screen terminal (/dev/tty1) if available,
+        # so interactive selection menus are displayed properly to the user.
+        if [ -c /dev/tty1 ]; then
+            source "$hook" < /dev/tty1 > /dev/tty1 2>&1 || echo "Warning: Hook $hook exited with error"
+        else
+            source "$hook" || echo "Warning: Hook $hook exited with error"
+        fi
+    done
+fi
+
 if [ -z "$TARGET_IMAGE" ]; then
-    echo "ERROR: target_image must be specified in $CONFIG_FILE"
+    echo "ERROR: target_image must be specified in $CONFIG_FILE or selected by a bootstrap hook"
     exit 1
 fi
 
