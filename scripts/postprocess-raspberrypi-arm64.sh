@@ -110,9 +110,9 @@ fi
 firmware_dir="$(dirname "$firmware_start")"
 
 echo "Copying Raspberry Pi firmware from $firmware_dir"
-sudo cp -a "$firmware_dir"/bootcode.bin "$boot_mount"/ 2>/dev/null || true
-sudo cp -a "$firmware_dir"/start*.elf "$boot_mount"/
-sudo cp -a "$firmware_dir"/fixup*.dat "$boot_mount"/
+sudo cp -L "$firmware_dir"/bootcode.bin "$boot_mount"/ 2>/dev/null || true
+sudo cp -L "$firmware_dir"/start*.elf "$boot_mount"/
+sudo cp -L "$firmware_dir"/fixup*.dat "$boot_mount"/
 
 overlay_dir=""
 if [ -d "$firmware_dir/overlays" ]; then
@@ -127,7 +127,7 @@ if [ -z "$overlay_dir" ] || [ ! -d "$overlay_dir" ]; then
 fi
 
 sudo mkdir -p "$boot_mount/overlays"
-sudo cp -a "$overlay_dir"/. "$boot_mount/overlays"/
+sudo cp -RL "$overlay_dir"/. "$boot_mount/overlays"/
 
 uboot_bin=""
 for pattern in \
@@ -148,7 +148,7 @@ if [ -z "$uboot_bin" ]; then
 fi
 
 echo "Copying U-Boot from $uboot_bin"
-sudo cp -a "$uboot_bin" "$boot_mount/u-boot.bin"
+sudo cp -L "$uboot_bin" "$boot_mount/u-boot.bin"
 
 sudo tee "$boot_mount/config.txt" >/dev/null <<'EOF'
 arm_64bit=1
@@ -163,7 +163,7 @@ if [ ! -f "$boot_mount/EFI/BOOT/BOOTAA64.EFI" ]; then
   bootaa64="$(sudo find "$root_mount" -type f \( -iname BOOTAA64.EFI -o -iname shimaa64.efi -o -iname grubaa64.efi \) -print -quit)"
   if [ -n "$bootaa64" ]; then
     sudo mkdir -p "$boot_mount/EFI/BOOT"
-    sudo cp -a "$bootaa64" "$boot_mount/EFI/BOOT/BOOTAA64.EFI"
+    sudo cp -L "$bootaa64" "$boot_mount/EFI/BOOT/BOOTAA64.EFI"
   fi
 fi
 
