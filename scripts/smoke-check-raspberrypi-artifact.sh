@@ -19,7 +19,7 @@ if [ ! -f "$checksum_path" ]; then
   exit 66
 fi
 
-for cmd in zstd sha256sum python3 fsck.fat mdir dd; do
+for cmd in zstd sha256sum python3 fsck.fat mdir mtype dd grep; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
     echo "required command not found: $cmd" >&2
     exit 69
@@ -113,9 +113,16 @@ require_glob() {
 
 require_file "config.txt"
 require_file "u-boot.bin"
+require_file "kernel8.img"
+require_file "bcm2711-rpi-4-b.dtb"
 require_file "EFI/BOOT/BOOTAA64.EFI"
 require_glob "start*.elf"
 require_glob "fixup*.dat"
 require_glob "overlays/*.dtbo"
+
+if ! mtype -i "$boot_img" "::/config.txt" | grep -Eq '^[[:space:]]*kernel=kernel8\.img[[:space:]]*$'; then
+  echo "config.txt must set kernel=kernel8.img" >&2
+  exit 1
+fi
 
 echo "Compressed Raspberry Pi arm64 artifact smoke check passed."

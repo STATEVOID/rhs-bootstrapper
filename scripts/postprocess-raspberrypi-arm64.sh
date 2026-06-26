@@ -16,11 +16,15 @@ loop_dev=""
 work_dir="$(mktemp -d)"
 boot_mount="$work_dir/boot"
 root_mount="$work_dir/root"
+linux_boot_mount="$work_dir/linux-boot"
 
 cleanup() {
   set +e
   if mountpoint -q "$boot_mount"; then
     sudo umount "$boot_mount"
+  fi
+  if mountpoint -q "$linux_boot_mount"; then
+    sudo umount "$linux_boot_mount"
   fi
   if mountpoint -q "$root_mount"; then
     sudo umount "$root_mount"
@@ -32,7 +36,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$boot_mount" "$root_mount"
+mkdir -p "$boot_mount" "$root_mount" "$linux_boot_mount"
 
 loop_dev="$(sudo losetup --find --show --partscan "$image_path")"
 sleep 2
@@ -81,6 +85,17 @@ find_root_partition() {
   printf '%s\n' "$part"
 }
 
+find_linux_boot_partition() {
+  local root_part="$1"
+  local part
+  part="$(lsblk -bnrpo PATH,FSTYPE,SIZE "$loop_dev" | awk -v root_part="$root_part" '
+    $1 != root_part && $2 ~ /^(xfs|ext4|btrfs)$/ && $3 > largest { largest = $3; path = $1 }
+    END { if (path != "") print path }
+  ')"
+
+  printf '%s\n' "$part"
+}
+
 boot_part="$(find_esp_partition)"
 root_part="$(find_root_partition)"
 
@@ -96,6 +111,11 @@ fi
 
 sudo mount "$boot_part" "$boot_mount"
 sudo mount -o ro "$root_part" "$root_mount"
+
+linux_boot_part="$(find_linux_boot_partition "$root_part")"
+if [ -n "$linux_boot_part" ]; then
+  sudo mount -o ro "$linux_boot_part" "$linux_boot_mount"
+fi
 
 find_first_file() {
   local name="$1"
@@ -149,11 +169,26 @@ fi
 
 echo "Copying U-Boot from $uboot_bin"
 sudo cp -L "$uboot_bin" "$boot_mount/u-boot.bin"
+sudo cp -L "$uboot_bin" "$boot_mount/kernel8.img"
+
+copy_board_dtbs() {
+  local source_mount
+  for source_mount in "$root_mount" "$linux_boot_mount"; do
+    mountpoint -q "$source_mount" || continue
+    while IFS= read -r dtb; do
+      [ -n "$dtb" ] || continue
+      sudo cp -L "$dtb" "$boot_mount"/
+    done < <(sudo find "$source_mount" -type f \( -name 'bcm2711-rpi-*.dtb' -o -name 'bcm2712-rpi-*.dtb' \) -print)
+  done
+}
+
+copy_board_dtbs
 
 sudo tee "$boot_mount/config.txt" >/dev/null <<'EOF'
 arm_64bit=1
 enable_uart=1
-kernel=u-boot.bin
+uart_2ndstage=1
+kernel=kernel8.img
 disable_commandline_tags=2
 device_tree_address=0x03000000
 dtoverlay=vc4-kms-v3d
@@ -185,8 +220,15 @@ require_dir() {
 
 require_file "config.txt"
 require_file "u-boot.bin"
+require_file "kernel8.img"
+require_file "bcm2711-rpi-4-b.dtb"
 require_file "EFI/BOOT/BOOTAA64.EFI"
 require_dir "overlays"
+
+if ! grep -Eq '^[[:space:]]*kernel=kernel8\.img[[:space:]]*$' "$boot_mount/config.txt"; then
+  echo "config.txt must set kernel=kernel8.img" >&2
+  exit 1
+fi
 
 if ! compgen -G "$boot_mount/start*.elf" >/dev/null; then
   echo "missing required Raspberry Pi start*.elf firmware" >&2
