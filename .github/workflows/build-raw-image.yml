@@ -25,7 +25,7 @@ jobs:
       - name: Install image tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y dosfstools gdisk util-linux xfsprogs zstd
+          sudo apt-get install -y dosfstools gdisk mtools util-linux xfsprogs zstd
 
       - name: Build Bootc Container Image locally
         run: |
@@ -80,6 +80,9 @@ jobs:
           sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
           cd output/image
           sudo sha256sum rhs-bootstrapper-raspberrypi-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256 >/dev/null
+
+      - name: Smoke check compressed Raspberry Pi artifact
+        run: bash scripts/smoke-check-raspberrypi-artifact.sh output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
 
       - name: Determine Release Tag
         id: release_tag
