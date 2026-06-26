@@ -10,8 +10,25 @@ echo "==============================================="
 
 CONFIG_FILE=""
 
+# Ensure the boot partition is mounted at /boot/efi.  On standard
+# Fedora bootc images the ESP is auto-mounted by systemd-gpt-auto-
+# generator, but we change the partition type to Microsoft Basic Data
+# for desktop OS compatibility (Finder, Nautilus, etc.), so the auto-
+# discovery may not trigger.  Fall back to mounting the first FAT32
+# partition we find.
+if ! mountpoint -q /boot/efi 2>/dev/null; then
+    echo "Boot partition not auto-mounted at /boot/efi, scanning for FAT32 partition..."
+    for dev in $(lsblk -bnrpo PATH,FSTYPE 2>/dev/null | awk '$2 ~ /^(vfat|fat)/ {print $1}'); do
+        mkdir -p /boot/efi
+        if mount "$dev" /boot/efi 2>/dev/null; then
+            echo "Mounted $dev at /boot/efi"
+            break
+        fi
+    done
+fi
+
 # 1. Search for rhs-config.json
-# Look in the EFI Boot partition (FAT32, mounted automatically)
+# Look in the boot partition (FAT32, mounted at /boot/efi)
 if [ -f "/boot/efi/rhs-config.json" ]; then
     echo "Found config at /boot/efi/rhs-config.json"
     CONFIG_FILE="/boot/efi/rhs-config.json"

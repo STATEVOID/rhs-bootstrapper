@@ -171,6 +171,15 @@ echo "Copying U-Boot from $uboot_bin"
 sudo cp -L "$uboot_bin" "$boot_mount/u-boot.bin"
 sudo cp -L "$uboot_bin" "$boot_mount/kernel8.img"
 
+# Sanity check: a valid U-Boot binary should be at least 256 KiB.
+# A truncated or corrupt copy would cause the Pi GPU to fail loading it,
+# producing the same 7-flash "kernel not found" symptom.
+kernel8_size="$(stat -c %s "$boot_mount/kernel8.img" 2>/dev/null || stat -f %z "$boot_mount/kernel8.img")"
+if [ "$kernel8_size" -lt 262144 ]; then
+  echo "kernel8.img is suspiciously small ($kernel8_size bytes); expected a valid U-Boot binary (>256 KiB)" >&2
+  exit 1
+fi
+
 copy_board_dtbs() {
   local source_mount
   for source_mount in "$root_mount" "$linux_boot_mount"; do
@@ -244,6 +253,23 @@ if ! sudo find "$boot_mount/overlays" -type f -name '*.dtbo' -print -quit | grep
   echo "missing Raspberry Pi overlay .dtbo files" >&2
   exit 1
 fi
+
+# Change the boot partition type from EFI System Partition to Microsoft
+# Basic Data.  bootc-image-builder marks this partition as an ESP for
+# standard UEFI hardware, but the Raspberry Pi does not use UEFI — the
+# GPU firmware simply reads the first FAT32 partition regardless of its
+# GPT type GUID.  Keeping the ESP type causes macOS (and some Linux
+# desktops) to hide the partition from the file manager, preventing
+# users from seeing the boot files or dropping rhs-config.json onto
+# the drive — the exact workflow Raspbian images support out of the box.
+#
+# U-Boot finds EFI files by scanning FAT partitions (distro_bootcmd),
+# so it does not depend on the ESP type either.  The bootstrapper
+# script has its own fallback mount logic for /boot/efi in case
+# systemd-gpt-auto-generator no longer auto-discovers the partition.
+boot_part_number="$(echo "$boot_part" | grep -oE '[0-9]+$')"
+echo "Changing boot partition type from ESP to Basic Data (partition $boot_part_number)"
+sudo sfdisk --part-type "$loop_dev" "$boot_part_number" EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
 
 sudo sync
 echo "Raspberry Pi arm64 boot assets validated."
