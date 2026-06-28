@@ -115,6 +115,11 @@ require_file "config.txt"
 require_file "u-boot.bin"
 require_file "kernel8.img"
 require_file "bcm2711-rpi-4-b.dtb"
+
+if ! mdir -i "$boot_img" "::/bcm2712-rpi-5-b.dtb" >/dev/null 2>&1; then
+  echo "WARNING: bcm2712-rpi-5-b.dtb not found; Raspberry Pi 5 may not boot" >&2
+fi
+
 require_file "EFI/BOOT/BOOTAA64.EFI"
 require_glob "start*.elf"
 require_glob "fixup*.dat"
