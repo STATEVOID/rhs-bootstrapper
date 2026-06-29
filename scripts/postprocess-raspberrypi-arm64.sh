@@ -274,7 +274,7 @@ fi
 # systemd-gpt-auto-generator no longer auto-discovers the partition.
 boot_part_number="$(echo "$boot_part" | grep -oE '[0-9]+$')"
 echo "Changing boot partition type from ESP to Basic Data (partition $boot_part_number)"
-sudo sfdisk --part-type "$loop_dev" "$boot_part_number" EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
+sudo sfdisk --no-reread --part-type "$loop_dev" "$boot_part_number" EBD0A0A2-B9E5-4433-87C0-68B6B72699C7 || true
 
 sudo sync
 echo "Raspberry Pi arm64 boot assets validated."
