@@ -134,12 +134,7 @@ sudo cp -L "$firmware_dir"/bootcode.bin "$boot_mount"/ 2>/dev/null || true
 sudo cp -L "$firmware_dir"/start*.elf "$boot_mount"/
 sudo cp -L "$firmware_dir"/fixup*.dat "$boot_mount"/
 
-overlay_dir=""
-if [ -d "$firmware_dir/overlays" ]; then
-  overlay_dir="$firmware_dir/overlays"
-else
-  overlay_dir="$(sudo find "$root_mount" -type d -path '*/overlays' -print -quit)"
-fi
+overlay_dir="$(sudo find "$root_mount" -type f -name '*.dtbo' -print -quit | xargs -r dirname)"
 
 if [ -z "$overlay_dir" ] || [ ! -d "$overlay_dir" ]; then
   echo "could not locate Raspberry Pi device-tree overlays" >&2
