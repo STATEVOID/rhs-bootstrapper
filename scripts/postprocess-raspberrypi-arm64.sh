@@ -149,7 +149,17 @@ fi
 sudo mkdir -p "$boot_mount/overlays"
 sudo cp -RL "$overlay_dir"/. "$boot_mount/overlays"/
 
-uboot_bin="$(find_first_file u-boot.bin)"
+uboot_bin=""
+for pattern in \
+  '*/usr/share/uboot/rpi_arm64/u-boot.bin' \
+  '*/usr/share/uboot/rpi_4/u-boot.bin' \
+  '*/usr/share/uboot/rpi_3/u-boot.bin'
+do
+  uboot_bin="$(sudo find "$root_mount" -type f -path "$pattern" -print -quit)"
+  if [ -n "$uboot_bin" ]; then
+    break
+  fi
+done
 
 if [ -z "$uboot_bin" ]; then
   echo "could not locate U-Boot binary for Raspberry Pi arm64" >&2
