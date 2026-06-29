@@ -12,6 +12,7 @@ RUN dnf install -y \
       NetworkManager \
       NetworkManager-wifi \
       openssh-server \
+      uboot-images-armv8 \
       wpa_supplicant \
       wireless-regdb \
     && dnf clean all \
