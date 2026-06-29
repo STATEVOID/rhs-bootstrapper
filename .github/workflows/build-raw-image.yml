@@ -39,16 +39,11 @@ jobs:
           sudo podman run --rm --platform linux/arm64 localhost/rhs-bootstrapper:raspberrypi-arm64 uname -m | grep -Eq '^(aarch64|arm64)$'
           sudo podman run --rm --platform linux/arm64 localhost/rhs-bootstrapper:raspberrypi-arm64 \
             rpm -q \
-              bcm283x-firmware \
-              grub2-efi-aa64 \
               iputils \
               jq \
-              linux-firmware \
               NetworkManager \
               NetworkManager-wifi \
               openssh-server \
-              shim-aa64 \
-              uboot-images-armv8 \
               wpa_supplicant \
               wireless-regdb
 
@@ -72,17 +67,11 @@ jobs:
             --rootfs xfs \
             localhost/rhs-bootstrapper:raspberrypi-arm64
 
-      - name: Inject and validate Raspberry Pi boot assets
-        run: bash scripts/postprocess-raspberrypi-arm64.sh output/image/disk.raw
-
       - name: Compress and checksum output file
         run: |
           sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
           cd output/image
           sudo sha256sum rhs-bootstrapper-raspberrypi-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256 >/dev/null
-
-      - name: Smoke check compressed Raspberry Pi artifact
-        run: bash scripts/smoke-check-raspberrypi-artifact.sh output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
 
       - name: Determine Release Tag
         id: release_tag

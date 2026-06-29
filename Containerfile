@@ -1,22 +1,17 @@
 # rhs-bootstrapper
-# A public, generic zero-touch provisioning OS image based on fedora-bootc.
+# A public, generic zero-touch provisioning OS image based on almalinux-bootc-rpi.
 # It reads rhs-config.json from the /boot/efi FAT32 partition or USB drives.
 
-FROM quay.io/fedora/fedora-bootc:40
+FROM quay.io/almalinuxorg/almalinux-bootc-rpi:latest
 
-# Install the runtime packages used during first boot and the Fedora-provided
-# Raspberry Pi boot assets copied into the generated SD-card image by CI.
+# Install the runtime packages used during first boot.
+# (Raspberry Pi boot assets are natively handled by the AlmaLinux Pi base image)
 RUN dnf install -y \
-      bcm283x-firmware \
-      grub2-efi-aa64 \
       iputils \
       jq \
-      linux-firmware \
       NetworkManager \
       NetworkManager-wifi \
       openssh-server \
-      shim-aa64 \
-      uboot-images-armv8 \
       wpa_supplicant \
       wireless-regdb \
     && dnf clean all \
