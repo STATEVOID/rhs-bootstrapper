@@ -67,11 +67,17 @@ jobs:
             --rootfs xfs \
             localhost/rhs-bootstrapper:raspberrypi-arm64
 
+      - name: Inject and validate Raspberry Pi boot assets
+        run: bash scripts/postprocess-raspberrypi-arm64.sh output/image/disk.raw
+
       - name: Compress and checksum output file
         run: |
           sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
           cd output/image
           sudo sha256sum rhs-bootstrapper-raspberrypi-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256 >/dev/null
+
+      - name: Smoke check compressed Raspberry Pi artifact
+        run: bash scripts/smoke-check-raspberrypi-artifact.sh output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
 
       - name: Determine Release Tag
         id: release_tag
