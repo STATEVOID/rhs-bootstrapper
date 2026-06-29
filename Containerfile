@@ -6,6 +6,8 @@ FROM quay.io/almalinuxorg/almalinux-bootc-rpi:latest
 
 # Install the runtime packages used during first boot.
 # (Raspberry Pi boot assets are natively handled by the AlmaLinux Pi base image)
+RUN printf "[fedora]\nname=Fedora 40 - aarch64\nmetalink=https://mirrors.fedoraproject.org/metalink?repo=fedora-40&arch=aarch64\nenabled=1\ngpgcheck=0\n" > /etc/yum.repos.d/fedora.repo
+
 RUN dnf install -y \
       iputils \
       jq \
@@ -15,6 +17,7 @@ RUN dnf install -y \
       uboot-images-armv8 \
       wpa_supplicant \
       wireless-regdb \
+    && rm -f /etc/yum.repos.d/fedora.repo \
     && dnf clean all \
     && rm -rf /var/cache/dnf/*
 
