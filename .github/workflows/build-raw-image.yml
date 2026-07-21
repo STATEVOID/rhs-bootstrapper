@@ -85,12 +85,22 @@ jobs:
 
       - name: Compress and checksum output file
         run: |
-          sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
+          sudo zstd -T0 -19 --rm output/image/disk.raw -o output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst
           cd output/image
-          sudo sha256sum rhs-bootstrapper-raspberrypi-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256 >/dev/null
+          sudo sha256sum rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst | sudo tee rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst.sha256 >/dev/null
 
       - name: Smoke check compressed Raspberry Pi artifact
-        run: bash scripts/smoke-check-raspberrypi-artifact.sh output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
+        run: bash scripts/smoke-check-raspberrypi-artifact.sh output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst.sha256
+
+      - name: Upload Raspberry Pi 4 hardware-test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhs-bootstrapper-raspberrypi4-direct-boot-arm64
+          path: |
+            output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst
+            output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst.sha256
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Determine Release Tag
         id: release_tag
@@ -110,7 +120,7 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
           files: |
-            output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst
-            output/image/rhs-bootstrapper-raspberrypi-arm64.raw.zst.sha256
+            output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst
+            output/image/rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst.sha256
           prerelease: ${{ env.TAG_NAME == 'latest' }}
           make_latest: ${{ env.TAG_NAME != 'latest' }}

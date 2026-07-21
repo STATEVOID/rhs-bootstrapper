@@ -8,7 +8,7 @@ This solves the "first boot" problem for IoT devices and drones, allowing you to
 Provide a secure, automated, and lightweight mechanism to bootstrap bare-metal physical devices. It aims to completely automate Wi-Fi configuration, private container registry authentication, custom boot hooks, user account setup, SSH daemon enabling, and running the atomic `bootc switch` without requiring visual monitors or keyboards.
 
 ## How It Works
-1. **Flash:** You flash the pre-built `rhs-bootstrapper-raspberrypi-arm64.raw.zst` image to your MicroSD card, NVMe drive, or eMMC.
+1. **Flash:** You flash the pre-built `rhs-bootstrapper-raspberrypi4-direct-boot-arm64.raw.zst` image to your MicroSD card, NVMe drive, or eMMC.
 2. **Configure:** You plug the drive into your PC. The `boot` partition (FAT32) mounts, and you drop a file named `rhs-config.json` into this partition.
 3. **Boot:** You put the drive into a Raspberry Pi 4 and boot.
 4. **Provisioning:** The bootstrapper reads `rhs-config.json`, establishes a connection, provisions registry credentials, creates users/SSH keys, performs a `bootc switch`, and reboots into the custom OS.
