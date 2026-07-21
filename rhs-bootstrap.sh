@@ -10,12 +10,8 @@ echo "==============================================="
 
 CONFIG_FILE=""
 
-# Ensure the boot partition is mounted at /boot/efi.  On standard
-# Fedora bootc images the ESP is auto-mounted by systemd-gpt-auto-
-# generator, but we change the partition type to Microsoft Basic Data
-# for desktop OS compatibility (Finder, Nautilus, etc.), so the auto-
-# discovery may not trigger.  Fall back to mounting the first FAT32
-# partition we find.
+# Ensure the first FAT boot partition is mounted at /boot/efi. Fall back to
+# discovering it if the image's generated mount configuration did not mount it.
 if ! mountpoint -q /boot/efi 2>/dev/null; then
     echo "Boot partition not auto-mounted at /boot/efi, scanning for FAT32 partition..."
     for dev in $(lsblk -bnrpo PATH,FSTYPE 2>/dev/null | awk '$2 ~ /^(vfat|fat)/ {print $1}'); do

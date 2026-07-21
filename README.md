@@ -10,7 +10,7 @@ Provide a secure, automated, and lightweight mechanism to bootstrap bare-metal p
 ## How It Works
 1. **Flash:** You flash the pre-built `rhs-bootstrapper-raspberrypi-arm64.raw.zst` image to your MicroSD card, NVMe drive, or eMMC.
 2. **Configure:** You plug the drive into your PC. The `boot` partition (FAT32) mounts, and you drop a file named `rhs-config.json` into this partition.
-3. **Boot:** You put the drive into your target hardware (e.g. Raspberry Pi 4/5) and boot.
+3. **Boot:** You put the drive into a Raspberry Pi 4 and boot.
 4. **Provisioning:** The bootstrapper reads `rhs-config.json`, establishes a connection, provisions registry credentials, creates users/SSH keys, performs a `bootc switch`, and reboots into the custom OS.
 
 ## Configuration Details
@@ -38,7 +38,7 @@ Once the RHS Bootstrapper successfully provisions the target environment, it **s
 
 ## Technology Readiness Level (TRL)
 **TRL 4 (Component validation in laboratory environment)**
-The bootstrap service and provisioning script are buildable using GitHub Actions, producing a Raspberry Pi 4/5 arm64 raw SD-card artifact with Fedora-provided Pi boot assets and a SHA-256 checksum.
+The bootstrap service and provisioning script are buildable using GitHub Actions, producing a Raspberry Pi 4 arm64 raw SD-card artifact with AlmaLinux's native `rpi-bootc-bootloader` path and a SHA-256 checksum. Target bootc images must inherit from the same AlmaLinux Pi base, or provide an equivalent Pi kernel, `/usr/lib/ostree-boot` payload, synchronizer, and OSTree finalization hook.
 
 ## Gaps & Future Work
 - **Unencrypted Configuration Payload:** The `rhs-config.json` payload contains plain text Wi-Fi and registry secrets on the FAT32 partition. Although securely shredded on first boot, it resides unencrypted before provisioning. Future revisions should encrypt this payload using device-sealed TPM keys.

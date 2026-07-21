@@ -10,6 +10,17 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      publish_latest:
+        description: Publish the validated artifact to the latest prerelease
+        required: true
+        type: boolean
+        default: false
+      pi4_hardware_validated:
+        description: Direct-write and Statevoid Imager boot tests passed on a Raspberry Pi 4
+        required: true
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -25,7 +36,7 @@ jobs:
       - name: Install image tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y dosfstools gdisk mtools util-linux xfsprogs zstd
+          sudo apt-get install -y dosfstools util-linux xfsprogs zstd
 
       - name: Build Bootc Container Image locally
         run: |
@@ -44,31 +55,33 @@ jobs:
               NetworkManager \
               NetworkManager-wifi \
               openssh-server \
+              raspberrypi2-kernel4 \
               wpa_supplicant \
               wireless-regdb
+          sudo podman run --rm --platform linux/arm64 localhost/rhs-bootstrapper:raspberrypi-arm64 \
+            bash -ceu 'test -d /usr/lib/ostree-boot; test -x /usr/bin/rpi-bootc-bootloader; test -f /usr/lib/systemd/system/ostree-finalize-staged.service.d/rpi-bootc-bootloader.conf'
 
       - name: Build Raw Disk Image using bootc-image-builder
         run: |
           sudo mkdir -p ./output
-          echo -e '[[customizations.filesystem]]\nmountpoint = "/"\nminsize = "3 GiB"' > ./config.toml
           sudo podman run \
             --rm \
             --privileged \
             --pull=newer \
             --security-opt label=type:unconfined_t \
-            -v ./config.toml:/config.toml \
+            -v ./bib-config.toml:/config.toml:ro \
             -v ./output:/output \
             -v /var/lib/containers/storage:/var/lib/containers/storage \
             quay.io/centos-bootc/bootc-image-builder:latest \
+            --no-default-kernel-args \
             --config /config.toml \
-            build \
-            --target-arch arm64 \
             --type raw \
             --rootfs xfs \
+            --local \
             localhost/rhs-bootstrapper:raspberrypi-arm64
 
-      - name: Inject and validate Raspberry Pi boot assets
-        run: bash scripts/postprocess-raspberrypi-arm64.sh output/image/disk.raw
+      - name: Synchronize and validate Raspberry Pi direct-boot assets
+        run: bash scripts/postprocess-raspberrypi-arm64.sh output/image/disk.raw localhost/rhs-bootstrapper:raspberrypi-arm64
 
       - name: Compress and checksum output file
         run: |
@@ -92,7 +105,7 @@ jobs:
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish_latest && inputs.pi4_hardware_validated)
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
